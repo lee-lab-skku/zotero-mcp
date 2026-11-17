@@ -213,6 +213,10 @@ Add `-v` anywhere to see progress messages (e.g., which API calls are made):
 zotero-cli -v search "CRISPR"
 ```
 
+## Browser Connector saves
+
+Use [`zotero-cli browser`](browser-connector.md) to save an open publication tab through the paired browser Connector, including its authenticated PDF acquisition path.
+
 ## Finding a flag
 
 `zotero-cli --help` and `zotero-cli <command> --help` show the options of `zotero-cli`. The server's own commands (`serve`, `setup`, `update-db`, `batch-status`, `repair-db` and the rest) have a single reference: `zotero-mcp help` prints every command with every option, and `zotero-mcp help update-db` shows one command.

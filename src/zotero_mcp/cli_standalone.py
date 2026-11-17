@@ -278,6 +278,67 @@ def _read_backend():
 # Command handlers
 # ---------------------------------------------------------------------------
 
+def cmd_browser(args):
+    """Use the paired browser Connector, including its authenticated PDF path."""
+    from zotero_mcp.browser_bridge import BridgeClient, BridgeError, make_server, read_token, save_batch
+    token = read_token(args.token_file, create=args.browser_action == "serve")
+    if args.browser_action == "serve":
+        with make_server(token, args.port) as server:
+            print(f"Browser bridge listening on 127.0.0.1:{server.server_port}; "
+                  f"pair the Connector using {args.token_file}", file=sys.stderr)
+            server.serve_forever()
+        return
+    client = BridgeClient(token, args.port)
+    if getattr(args, "destination", None) or getattr(args, "ready_timeout", 30) != 30:
+        capabilities = client.run({"action": "targets"}, args.timeout)["result"]
+        required = {"destination"} if getattr(args, "destination", None) else set()
+        if getattr(args, "ready_timeout", 30) != 30:
+            required.add("ready_timeout")
+        if not capabilities.get("ok") or not required.issubset(capabilities.get("capabilities", [])):
+            raise BridgeError("Connector does not support the requested save options; update and reload it before saving")
+    if args.browser_action == "batch":
+        result = save_batch(client, args.urls, args.target, args.interval, args.timeout, args.destination, args.ready_timeout)
+        if not result["ok"]:
+            if _json_mode(args):
+                payload = _cli_json.envelope("browser", ok=False, error="Batch has deferred, failed or unattempted papers", code="browser_batch_incomplete")
+                payload["data"] = result
+                print(json.dumps(payload, ensure_ascii=False))
+            else:
+                print(json.dumps(result, ensure_ascii=False, indent=2))
+            sys.exit(1)
+        _out(args, "browser", data=result, text=json.dumps(result, ensure_ascii=False, indent=2))
+        return
+    if args.browser_action == "status":
+        result = client.request("/status")
+    elif args.browser_action == "result":
+        result = client.wait(args.job_id, args.timeout)
+    else:
+        request = {"action": args.browser_action}
+        if args.browser_action == "save":
+            request.update(tab_id=args.tab_id, url=args.url, target=args.target, destination=args.destination, require_pdf=not args.allow_no_pdf)
+        elif args.browser_action == "open":
+            request["url"] = args.url
+        elif args.browser_action in ("inspect", "focus"):
+            request["tab_id"] = args.tab_id
+        if args.browser_action in ("open", "save"):
+            request["background"] = args.background
+        if args.browser_action == "save":
+            request["close_on_success"] = args.close_on_success
+        if args.browser_action == "save":
+            request["ready_timeout"] = args.ready_timeout
+        result = client.run(request, args.timeout)
+    if result.get("result", {}).get("ok") is False:
+        if _json_mode(args):
+            payload = _cli_json.envelope("browser", ok=False,
+                error=result["result"].get("error", "Browser save failed"), code="browser_save_failed")
+            payload["data"] = result  # Keep partial save/session evidence on failure.
+            print(json.dumps(payload, ensure_ascii=False))
+        else:
+            print(json.dumps(result, ensure_ascii=False, indent=2), file=sys.stderr)
+        sys.exit(1)
+    _out(args, "browser", data=result, text=json.dumps(result, ensure_ascii=False, indent=2))
+
+
 def cmd_config(args):
     import os
     setup_zotero_environment()
@@ -1773,6 +1834,40 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser = add_parser
 
+    # Browser Connector transport
+    browser_p = sub.add_parser("browser", help="Save through the paired browser Zotero Connector")
+    browser_sub = browser_p.add_subparsers(dest="browser_action", required=True)
+    for action in ("serve", "status", "tabs", "targets", "open", "inspect", "focus", "save", "batch", "result"):
+        bp = browser_sub.add_parser(action)
+        bp.add_argument("--json", action="store_true", dest="json_out", default=argparse.SUPPRESS)
+        bp.add_argument("--port", type=int, default=23120)
+        bp.add_argument("--token-file", default="~/.config/zotero-mcp/browser-bridge.token")
+        if action not in ("serve", "status"):
+            bp.add_argument("--timeout", type=float, default=120)
+        if action == "batch":
+            bp.add_argument("urls", nargs="+", help="Distinct new-publication URLs, after caller duplicate checks")
+            bp.add_argument("--target", help="Require this initial selection; without destination, guard every save")
+            bp.add_argument("--interval", type=float, default=2.0, help="Seconds between papers (0.5–60; default 2)")
+        if action in ("save", "batch"):
+            bp.add_argument("--ready-timeout", type=float, default=30, help="Page/translator readiness budget in seconds (0.5–120; default 30), separate from batch interval and job timeout")
+        if action in ("save", "batch"):
+            bp.add_argument("--destination", help="Move the new save session to this Connector L/C target, like the popup")
+        if action in ("open", "save"):
+            bp.add_argument("--background", action="store_true", help="Open the URL in an inactive tab without focusing its window")
+        if action == "save":
+            bp.add_argument("--close-on-success", action="store_true", help="Close this request's background URL tab after confirmed save; preserve failures and user-touched tabs")
+            selection = bp.add_mutually_exclusive_group(required=True)
+            selection.add_argument("--tab-id", type=int, help="Open browser tab from browser tabs")
+            selection.add_argument("--url", help="Open this publication URL in the paired browser and save it")
+            bp.add_argument("--target", help="Require this currently selected Connector target (L/C ID)")
+            bp.add_argument("--allow-no-pdf", action="store_true", help="Allow a metadata-only save")
+        if action == "open":
+            bp.add_argument("url", help="HTTP(S) publication URL to open in the paired browser")
+        if action in ("inspect", "focus"):
+            bp.add_argument("--tab-id", type=int, required=True)
+        if action == "result":
+            bp.add_argument("job_id")
+
     # config
     cfg_p = sub.add_parser("config", help="Show current Zotero configuration")
     cfg_p.add_argument("--show-secrets", action="store_true", help="Show full API keys")
@@ -2206,6 +2301,7 @@ def build_parser() -> argparse.ArgumentParser:
 # ---------------------------------------------------------------------------
 
 _CMD_MAP = {
+    "browser": cmd_browser,
     "config": cmd_config,
     "search": cmd_search, "s": cmd_search,
     "get": cmd_get, "g": cmd_get,
@@ -2265,6 +2361,8 @@ Commands returning structured data
   notes list            data.notes[] -- with both .text and .html
   config                data.settings
   plugin                data.path
+  browser               connection status or job/Connector receipt; failed jobs
+                        retain partial receipts in data alongside error
 
 Every other command returns {"text": "<the markdown it would have
 printed>"}. That is deliberate: those commands' answers really are status

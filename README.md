@@ -62,6 +62,13 @@ One package, `zotero-mcp-server`, ships all three. Pick the one that fits where 
 - **Local or web**: in local mode reads come straight from `zotero.sqlite`; writes go to the running Zotero 10+ or through the web API
 - **Scite** citation tallies and retraction alerts (optional)
 
+## Browser Connector saves in this fork
+
+Use [`zotero-cli browser`](docs/browser-connector.md) to save an open publication tab through the paired Connector fork, with the browser's session and attachment-download path.
+The matching [Connector fork](zotero-connectors/README.md) is tracked in the `zotero-connectors/` Git submodule on `feat-agent` to pin a compatible source revision.
+The Python package and browser extension keep separate build, installation and release workflows.
+See the [browser setup guide](docs/browser-connector.md#setup) for checkout and build preparation.
+
 ## Quick start
 
 **1. Install** (Python 3.10+):

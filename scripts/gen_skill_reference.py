@@ -11,6 +11,7 @@ Run after changing the CLI surface:
     python scripts/gen_skill_reference.py
 
 `tests/test_skill_reference_current.py` fails if the checked-in file is stale.
+Commands in `SEPARATE` are written to their own file beside it instead.
 """
 
 import argparse
@@ -40,6 +41,22 @@ but not follow a sub-command: `get --json metadata KEY` parses and
 
 # Commands for the person at the keyboard, not the agent: keep them out of the skill.
 HUMAN_ONLY = {"plugin", "tags"}  # tags: deprecated alias of batch
+
+# Commands whose reference goes to its own file beside reference.md, read only
+# from the guide that covers them. The browser commands would add ~800 tokens,
+# pushing SKILL.md + reference.md past the MCP surface they are measured
+# against (tests/test_context_cost_claim.py).
+SEPARATE = {"browser": "browser-reference.md"}
+
+SEPARATE_HEADER = """# zotero-cli {command} command reference
+
+Generated from the CLI's own argument parser by
+`scripts/gen_skill_reference.py` -- do not edit by hand.
+
+`reference.md` in this skill directory covers the global options and every
+other command.
+
+"""
 
 
 def _format_action(action) -> str | None:
@@ -130,7 +147,7 @@ def build() -> str:
 
     seen: set[int] = set()
     for name, sub in subparsers.choices.items():
-        if id(sub) in seen or name in HUMAN_ONLY:
+        if id(sub) in seen or name in HUMAN_ONLY or name in SEPARATE:
             continue
         seen.add(id(sub))
         names = aliases[id(sub)]
@@ -142,17 +159,37 @@ def build() -> str:
     return out.getvalue()
 
 
-if __name__ == "__main__":
-    # An explicit destination lets a caller (the test suite, most of all)
-    # generate without writing over the checked-in copy.
-    out = Path(sys.argv[1]) if len(sys.argv) > 1 else OUT
-    text = build()
-    out.parent.mkdir(parents=True, exist_ok=True)
+def build_separate(command: str) -> str:
+    """The reference for one command in `SEPARATE`, as its own file."""
+    from zotero_mcp.cli_standalone import build_parser
+
+    parser = build_parser()
+    subparsers = [
+        a for a in parser._actions if isinstance(a, argparse._SubParsersAction)
+    ][0]
+    out = io.StringIO()
+    out.write(SEPARATE_HEADER.format(command=command))
+    _render(command, subparsers.choices[command], out)
+    return out.getvalue()
+
+
+def _write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
     # newline="\n" is load-bearing on Windows: write_text's default
     # translates every "\n" to "\r\n", so a run of this script rewrote the
     # tracked file in CRLF. The repo is LF throughout, and read_text()
     # normalizes on the way back in, so nothing downstream reported the drift.
-    with open(out, "w", encoding="utf-8", newline="\n") as fh:
+    with open(path, "w", encoding="utf-8", newline="\n") as fh:
         fh.write(text)
-    shown = out.relative_to(REPO) if out.is_relative_to(REPO) else out
+    shown = path.relative_to(REPO) if path.is_relative_to(REPO) else path
     print(f"wrote {shown} ({len(text)} chars)")
+
+
+if __name__ == "__main__":
+    # An explicit destination lets a caller (the test suite, most of all)
+    # generate without writing over the checked-in copy.
+    out = Path(sys.argv[1]) if len(sys.argv) > 1 else OUT
+    _write(out, build())
+    # Separate references land beside the main one, wherever that is.
+    for command, filename in SEPARATE.items():
+        _write(out.parent / filename, build_separate(command))

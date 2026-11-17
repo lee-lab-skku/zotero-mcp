@@ -1,0 +1,4 @@
+[submodule "zotero-connectors"]
+	path = zotero-connectors
+	url = git@github.com:lee-lab-skku/zotero-connectors.git
+	branch = feat-agent
