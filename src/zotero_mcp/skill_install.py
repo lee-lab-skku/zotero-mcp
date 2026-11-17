@@ -42,6 +42,12 @@ SKILL_NAME = "zotero-cli"
 BLOCK_BEGIN = f"<!-- BEGIN {SKILL_NAME} skill (managed by `zotero-mcp install-skill`) -->"
 BLOCK_END = f"<!-- END {SKILL_NAME} skill -->"
 
+#: Files in the skill directory that an agent reads only when SKILL.md, or a
+#: file it points to, sends it there. SKILL.md names the first two as
+#: "`<file>` in this skill directory"; `browser-reference.md` is reached
+#: from `acquisition.md`, which sits beside it in every installed copy.
+ON_DEMAND_FILES = ("reference.md", "acquisition.md", "browser-reference.md")
+
 
 # ---------------------------------------------------------------------------
 # The packaged skill
@@ -138,8 +144,8 @@ def _display_path(path: Path, root: Path) -> str:
         return path.as_posix()
 
 
-def _skill_body(*, reference_path: Path, root: Path) -> str:
-    """The SKILL.md body, with its pointer to the command reference resolved.
+def _skill_body(*, skill_dir: Path, root: Path) -> str:
+    """The SKILL.md body, with its pointers to on-demand files resolved.
 
     The packaged body says "reference.md in this skill directory", which is
     true where the whole directory is copied intact (Claude) and false
@@ -149,10 +155,12 @@ def _skill_body(*, reference_path: Path, root: Path) -> str:
     src = (packaged_skill_dir() / "SKILL.md").read_text(encoding="utf-8")
     parts = src.split("---", 2)
     body = parts[2].lstrip("\n") if len(parts) > 2 else src
-    return body.replace(
-        "`reference.md` in this skill directory",
-        f"`{_display_path(reference_path, root)}`",
-    )
+    for name in ON_DEMAND_FILES:
+        body = body.replace(
+            f"`{name}` in this skill directory",
+            f"`{_display_path(skill_dir / name, root)}`",
+        )
+    return body
 
 
 def _pointer_block(skill_path: Path, root: Path) -> str:
@@ -228,7 +236,7 @@ def _install_claude(root: Path, force: bool, *, user_scope: bool) -> TargetResul
     if problem:
         return TargetResult(name, problem.status, problem.detail, problem.paths)
     return TargetResult(name, "installed", f"skill directory at {dst}",
-                        [dst / "SKILL.md", dst / "reference.md"])
+                        [dst / "SKILL.md", *(dst / f for f in ON_DEMAND_FILES)])
 
 
 def _install_rules_file(root: Path, force: bool, *, target: str, rel_dir: str,
@@ -250,7 +258,7 @@ def _install_rules_file(root: Path, force: bool, *, target: str, rel_dir: str,
     if problem and problem.status == "skipped":
         return TargetResult(target, problem.status, problem.detail, problem.paths)
 
-    body = _skill_body(reference_path=(skill_dir / "reference.md"), root=root)
+    body = _skill_body(skill_dir=skill_dir, root=root)
     content = frontmatter + "\n" + body
 
     if dst.exists() and dst.read_text(encoding="utf-8") == content:
@@ -264,7 +272,7 @@ def _install_rules_file(root: Path, force: bool, *, target: str, rel_dir: str,
     dst.parent.mkdir(parents=True, exist_ok=True)
     dst.write_text(content, encoding="utf-8")
     return TargetResult(target, "installed", f"rule file at {dst}",
-                        [dst, skill_dir / "reference.md"])
+                        [dst, *(skill_dir / f for f in ON_DEMAND_FILES)])
 
 
 def _install_instructions_file(root: Path, force: bool, *, target: str,

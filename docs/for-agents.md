@@ -60,6 +60,7 @@ Always pass `--json` when you will read the output. Every command prints one obj
 ```
 
 Check `ok` before using `data`; a failed command also exits 1. `zotero-cli --json-schema` prints the full contract, and `zotero-cli <command> --help` works for any command.
+Forward or log only the fields a task needs; identifying an attachment needs its key and filename, not its signed download URL.
 
 **Item keys are the currency.** Almost every task is: find keys, then act on them.
 
@@ -107,7 +108,9 @@ zotero-cli edit ABCD1234 --add-tags reviewed
 zotero-cli batch --item-keys A1B2C3D4,E5F6G7H8 --add-tags screened
 ```
 
-The full command reference is [docs/cli.md](cli.md) and, generated from the parser, [reference.md](../src/zotero_mcp/skills/zotero-cli/reference.md).
+To acquire PDFs, or to save through a paired browser Connector with `zotero-cli browser`, follow the skill's [acquisition guide](../src/zotero_mcp/skills/zotero-cli/acquisition.md).
+
+The full command reference is [docs/cli.md](cli.md) and, generated from the parser, [reference.md](../src/zotero_mcp/skills/zotero-cli/reference.md) with [browser-reference.md](../src/zotero_mcp/skills/zotero-cli/browser-reference.md) for the `browser` commands.
 
 ## Using the MCP server
 

@@ -48,7 +48,7 @@ zotero-mcp install-skill --force             # overwrite an existing copy
 
 **It keeps the context advantage.** Shared instruction files get a short pointer block, not the whole skill; the body lands beside it and the agent opens it only when it decides Zotero is relevant. Pasting 1,400 tokens into every agent's always-loaded context would spend exactly the advantage this exists for.
 
-The skill teaches the find-keys-then-act loop, `--json`, how to pick among the six search modes, paging, reading a PDF by outline-then-page-range rather than whole, reading and annotating a paper, and when an empty result means "the index is not built" rather than "you have no papers on that". Its generated [command reference](../src/zotero_mcp/skills/zotero-cli/reference.md) lists every command and flag.
+The skill teaches the find-keys-then-act loop, `--json`, how to pick among the six search modes, paging, reading a PDF by outline-then-page-range rather than whole, reading and annotating a paper, and when an empty result means "the index is not built" rather than "you have no papers on that". Its generated [command reference](../src/zotero_mcp/skills/zotero-cli/reference.md) lists every command and flag, except the `browser` commands, which its [acquisition guide](../src/zotero_mcp/skills/zotero-cli/acquisition.md) and generated [browser reference](../src/zotero_mcp/skills/zotero-cli/browser-reference.md) cover.
 
 ## Machine-readable output (`--json`)
 

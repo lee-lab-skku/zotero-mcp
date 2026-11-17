@@ -6,6 +6,8 @@ The browser runs its translators and attachment download code with its own sessi
 Keep the publication open and complete any login or item-selection dialog in that browser.
 The CLI does not copy browser credentials or independently download the publisher PDF.
 
+Agents using the `zotero-cli` skill follow its [acquisition guide](../src/zotero_mcp/skills/zotero-cli/acquisition.md), which covers duplicate checks, retry limits and verification.
+
 ## Setup
 
 Use a build of the Connector fork that includes Browser CLI, and run the CLI from this checkout or install this fork's Python package.

@@ -1,6 +1,6 @@
 ---
 name: zotero-cli
-description: Read and write a Zotero library from the shell with the `zotero-cli` command - search papers by keyword or meaning, read PDF full text and page ranges, get and set metadata, manage collections, tags, notes and annotations, add items by DOI/URL/ISBN, and export bibliographies. Use whenever the user asks about their Zotero library, references, citations, papers they have saved, or their reading notes.
+description: Read and write a Zotero library from the shell with the `zotero-cli` command - search papers by keyword or meaning, read PDF full text and page ranges, get and set metadata, manage collections, tags, notes and annotations, add items by DOI/URL/ISBN or a paired browser Connector, and export bibliographies. Use whenever the user asks about their Zotero library, references, citations, papers they have saved, or their reading notes.
 ---
 
 # Zotero from the shell
@@ -32,6 +32,7 @@ invocation with a stable shape, so you never parse prose:
 
 Both go to **stdout**; `[INFO]`/`[WARN]` diagnostics go to stderr. Check `ok`
 before using `data`. Run `zotero-cli --json-schema` for the full contract.
+Forward or log only the fields a task needs, never signed download URLs.
 
 ## The core loop
 
@@ -145,6 +146,8 @@ To file a PDF you have: `add doi DOI --attach-file PATH -c COLL --tags T` adds,
 files and attaches it in one call. `add folder DIR -c COLL` does that per PDF,
 reading the DOI from the metadata and page 1; a missing or ambiguous DOI is
 listed, never guessed.
+
+Before acquiring PDFs or using `zotero-cli browser`, read `acquisition.md` in this skill directory.
 
 Before a destructive change (`delete`, `duplicates merge`, a `batch` over
 many items), confirm with the user and show what will be affected. `delete
