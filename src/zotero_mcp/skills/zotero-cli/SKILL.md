@@ -33,7 +33,6 @@ invocation with a stable shape, so you never parse prose:
 
 Both go to **stdout**; `[INFO]`/`[WARN]` diagnostics go to stderr. Check `ok`
 before using `data`. Run `zotero-cli --json-schema` for the full contract.
-Forward or log only the fields a task needs, never signed download URLs.
 
 ## The core loop
 
